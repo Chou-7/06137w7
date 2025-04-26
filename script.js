@@ -18,7 +18,7 @@ function addRecord() {
   updateRecordList();
   updateTotalAmount();
   updatePieChart();
-  saveToGoogleSheet(record);
+  sendToGoogleSheet(record);
 
   // 清空輸入欄
   document.getElementById('date').value = "";
@@ -83,7 +83,7 @@ function updatePieChart() {
           '#F2D7B6',  // 交通
           '#BFD8B8',  // 娛樂
           '#A7C7E7',  // 日用品
-          '#D1CFE2'   // 其他
+          '#D1CFE2'    // 其他
         ]
       }]
     },
@@ -103,12 +103,14 @@ function updatePieChart() {
         }
       }
     },
-    plugins: [ChartDataLabels] // 加這行
+    plugins: [ChartDataLabels]
   });
 }
 
-function saveToGoogleSheet(record) {
-  fetch('https://docs.google.com/spreadsheets/d/1VdL8b5zNMeRngkzBbf-T7SzWfNUeMZNLqFf3ZliihBQ/edit?usp=sharing', {
+function sendToGoogleSheet(record) {
+  const webAppUrl = 'https://script.google.com/macros/s/AKfycbwLJ1bEBhGFcaLibeoY0WenGK9SCDcz0rNw6piFCSw14QJYqpS2DW5XGLKQoeKBe2oM5Q/exec';
+
+  fetch(webAppUrl, {
     method: 'POST',
     mode: 'no-cors',
     headers: {
