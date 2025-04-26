@@ -1,122 +1,119 @@
-document.addEventListener("DOMContentLoaded", function () {
-  const skillData = {
-    courses: [
-      "🐋研究鯨魚（文獻）",
-      "🎵聽音樂",
-      "🗻爬山"
-    ],
-    skills: [
-      { name: "觀察力", level: 80 },
-      { name: "思辨", level: 75 },
-      { name: "警惕", level: 85 }
-    ]
-  };
+let records = [];
+let pieChart;
 
-  // 定義圖片 URL
-  let imageUrls = [
-    "https://media.tenor.com/t0h41-pnWAoAAAAM/sousou-no-frieren-%E8%91%AC%E9%80%81%E7%9A%84%E8%8A%99%E8%8E%89%E8%93%AE.gif",
-    "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRANZd20LEIX4cuqPaq9A48hkPAXx0ZUFSS1A&s",
-    "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSWDLwoI_q6V4cy2EuVir28NSLTTjq0cUBhRg&s"
-  ];
+function addRecord() {
+  const date = document.getElementById('date').value;
+  const category = document.getElementById('category').value;
+  const amount = parseFloat(document.getElementById('amount').value);
+  const note = document.getElementById('note').value;
 
-  // 取得 #courses 和 #skills
-  const coursesSection = document.getElementById("courses");
-  const skillsSection = document.getElementById("skills");
+  if (!date || !category || isNaN(amount)) {
+    alert("請填寫完整資料！");
+    return;
+  }
 
-  // 生成「日常興趣」HTML
-  coursesSection.innerHTML = `
-      <h4>興趣</h4>
-      <ul>
-        ${skillData.courses.map((course) => `<li class="course-item">${course}</li>`).join("")}
-      </ul>
+  const record = { date, category, amount, note };
+  records.push(record);
+
+  updateRecordList();
+  updateTotalAmount();
+  updatePieChart();
+  saveToGoogleSheet(record);
+
+  // 清空輸入欄
+  document.getElementById('date').value = "";
+  document.getElementById('category').value = "";
+  document.getElementById('amount').value = "";
+  document.getElementById('note').value = "";
+}
+
+function updateRecordList() {
+  const recordList = document.getElementById('record-list');
+  recordList.innerHTML = '';
+
+  records.forEach((record, index) => {
+    const div = document.createElement('div');
+    div.className = 'record-item';
+    div.innerHTML = `
+      <strong>${record.date}</strong> | ${record.category} | ${record.amount}元<br>
+      <small>${record.note}</small>
+      <button class="delete-button" onclick="deleteRecord(${index})">×</button>
     `;
+    recordList.appendChild(div);
+  });
+}
 
-  // 生成「技能條」HTML
-  skillsSection.innerHTML = `
-      <h4>技能條</h4>
-      ${skillData.skills
-        .map(
-          (skill) => `
-        <div class="skill-bar">
-          <label>${skill.name} <span class="percentage">0%</span></label>
-          <div class="bar">
-            <div class="level" data-level="${skill.level}" style="width: 0;"></div>
-          </div>
-        </div>
-      `
-        )
-        .join("")}
-    `;
+function updateTotalAmount() {
+  const total = records.reduce((sum, record) => sum + record.amount, 0);
+  document.getElementById('total-amount').textContent = total;
+}
 
-  // **讓技能條動畫運行**
-  function animateSkillBars() {
-    document.querySelectorAll(".skill-bar").forEach(skillBar => {
-      let levelBar = skillBar.querySelector(".level");
-      let percentageLabel = skillBar.querySelector(".percentage");
-      let targetPercentage = parseInt(levelBar.getAttribute("data-level"));
-      let currentPercentage = 0;
-      let increment = targetPercentage / 50;
+function deleteRecord(index) {
+  records.splice(index, 1);
+  updateRecordList();
+  updateTotalAmount();
+  updatePieChart();
+}
 
-      let interval = setInterval(() => {
-        if (currentPercentage >= targetPercentage) {
-          clearInterval(interval);
-          percentageLabel.textContent = targetPercentage + "%";
-        } else {
-          currentPercentage += increment;
-          levelBar.style.width = currentPercentage + "%";
-          percentageLabel.textContent = Math.floor(currentPercentage) + "%";
+function updatePieChart() {
+  const categories = ['食', '交通', '娛樂', '日用品', '其他'];
+  const amounts = [0, 0, 0, 0, 0];
+
+  records.forEach(record => {
+    const idx = categories.indexOf(record.category);
+    if (idx !== -1) {
+      amounts[idx] += record.amount;
+    }
+  });
+
+  const ctx = document.getElementById('pieChart').getContext('2d');
+
+  if (pieChart) {
+    pieChart.destroy();
+  }
+
+  pieChart = new Chart(ctx, {
+    type: 'pie',
+    data: {
+      labels: categories,
+      datasets: [{
+        data: amounts,
+        backgroundColor: [
+          '#F7C5CC',  // 食
+          '#F2D7B6',  // 交通
+          '#BFD8B8',  // 娛樂
+          '#A7C7E7',  // 日用品
+          '#D1CFE2'   // 其他
+        ]
+      }]
+    },
+    options: {
+      plugins: {
+        datalabels: {
+          formatter: (value, context) => {
+            const sum = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+            const percentage = (value / sum * 100).toFixed(1) + '%';
+            return percentage;
+          },
+          color: '#333',
+          font: {
+            weight: 'bold',
+            size: 14
+          }
         }
-      }, 20);
-    });
-  }
-
-  // **呼叫 animateSkillBars()**
-  setTimeout(animateSkillBars, 500);
-
-  // 取得 .square-image
-  const squareImages = document.querySelectorAll(".square-image");
-
-  // 初始化圖片背景
-  function initializeImages() {
-    squareImages.forEach((img, index) => {
-      img.style.backgroundImage = `url('${imageUrls[index]}')`;
-    });
-  }
-
-  // **鯨魚彈窗邏輯**
-  const whaleModal = document.getElementById("whaleModal");
-  const closeBtn = document.querySelector(".close");
-  const whaleImage = whaleModal.querySelector('img');
-
-  // 使用事件代理綁定點擊事件
-  coursesSection.addEventListener("click", function (event) {
-    if (event.target.tagName === "LI" && event.target.textContent.includes("研究鯨魚")) {
-      whaleModal.style.display = "flex";
-    }
+      }
+    },
+    plugins: [ChartDataLabels] // 加這行
   });
+}
 
-  // 關閉彈窗
-  closeBtn.addEventListener("click", function () {
-    whaleModal.style.display = "none";
+function saveToGoogleSheet(record) {
+  fetch('https://docs.google.com/spreadsheets/d/1VdL8b5zNMeRngkzBbf-T7SzWfNUeMZNLqFf3ZliihBQ/edit?usp=sharing', {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(record)
   });
-
-  window.addEventListener("click", function (event) {
-    if (event.target === whaleModal) {
-      whaleModal.style.display = "none";
-    }
-  });
-
-  // 初始化圖片
-  initializeImages();
-
-  // 隨機排列圖片背景
-  function shuffleImages() {
-    let shuffledUrls = [...imageUrls].sort(() => Math.random() - 0.5);
-    squareImages.forEach((img, index) => {
-      img.style.backgroundImage = `url('${shuffledUrls[index]}')`;
-    });
-  }
-
-  // 綁定點擊事件
-  document.querySelector(".square-images").addEventListener("click", shuffleImages);
-});
+}
